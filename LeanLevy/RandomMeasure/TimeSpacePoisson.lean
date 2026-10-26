@@ -178,9 +178,10 @@ section LevyIntensity
 variable {ν : Measure ℝ} [SigmaFinite ν] {K : ℕ → Ω → ℕ} {X : ℕ → ℕ → Ω → ℝ × ℝ} {μ : Measure Ω}
 
 /-- Squaring the `L²` seminorm cancels the outer root: `(‖g‖₂)² = ∫⁻ ‖g‖ₑ² `. -/
-private lemma eLpNorm_two_sq {α : Type*} {mα : MeasurableSpace α} {τ : Measure α} (g : α → ℝ) :
+private lemma eLpNorm_two_sq {α : Type*} {mα : MeasurableSpace α} {τ : Measure α} (g : α → ℝ)
+    (hg : AEStronglyMeasurable g τ) :
     (eLpNorm g 2 τ) ^ 2 = ∫⁻ x, ‖g x‖ₑ ^ (2 : ℝ) ∂τ := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num),
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hg,
     show ((2 : ℝ≥0∞).toReal) = (2 : ℝ) from by norm_num,
     ← ENNReal.rpow_natCast (_ ^ (1 / (2 : ℝ))) 2, ← ENNReal.rpow_mul,
     show (1 / (2 : ℝ)) * ((2 : ℕ) : ℝ) = 1 from by norm_num, ENNReal.rpow_one]
@@ -231,9 +232,12 @@ private lemma lintegral_Ioo_sq_lt_top (hν : IsLevyMeasure ν) :
 `volume.prod ν` for any Lévy measure `ν`. -/
 theorem memLp_two_smallJumpBandFun (hν : IsLevyMeasure ν) (s t : ℝ) :
     MemLp ((Set.Ioc s t ×ˢ Set.Ioo (-1) 1).indicator fun p : ℝ × ℝ => p.2) 2 (volume.prod ν) := by
-  refine ⟨(measurable_snd.indicator
-    (measurableSet_Ioc.prod measurableSet_Ioo)).aestronglyMeasurable, ?_⟩
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num),
+  have hmeas : AEStronglyMeasurable
+      ((Set.Ioc s t ×ˢ Set.Ioo (-1 : ℝ) 1).indicator fun p : ℝ × ℝ => p.2)
+      (volume.prod ν) := (measurable_snd.indicator
+    (measurableSet_Ioc.prod measurableSet_Ioo)).aestronglyMeasurable
+  change eLpNorm _ 2 (volume.prod ν) < ∞
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hmeas,
     show ((2 : ℝ≥0∞).toReal) = (2 : ℝ) from by norm_num]
   refine ENNReal.rpow_lt_top_of_nonneg (by norm_num) ?_
   rw [lintegral_enorm_rpow_band measurableSet_Ioo s t, setLIntegral_band_snd_sq measurableSet_Ioo s t]
@@ -265,7 +269,9 @@ theorem eLpNorm_sq_levyCompensatedSmallJump [IsProbabilityMeasure μ]
     (eLpNorm (levyCompensatedSmallJump hd hν t) 2 μ) ^ 2
       = ENNReal.ofReal t * ∫⁻ x in Set.Ioo (-1) 1, ENNReal.ofReal (x ^ 2) ∂ν := by
   rw [levyCompensatedSmallJump, eLpNorm_compensatedPoissonIntegral,
-    eLpNorm_congr_ae (MemLp.coeFn_toLp _), eLpNorm_two_sq,
+    eLpNorm_congr_ae (MemLp.coeFn_toLp _),
+    eLpNorm_two_sq _ ((measurable_snd.indicator
+      (measurableSet_Ioc.prod measurableSet_Ioo)).aestronglyMeasurable),
     lintegral_enorm_rpow_band measurableSet_Ioo 0 t, setLIntegral_band_snd_sq measurableSet_Ioo 0 t,
     sub_zero]
 
@@ -343,15 +349,15 @@ private lemma integral_pieceMeasure {f : ℝ × ℝ → ℝ} (Y : ℕ → ℝ ×
   have hInt : Integrable f (Measure.sum fun n => if n < N then Measure.dirac (Y n) else 0) := by
     refine integrable_sum_measure (fun n => ?_) ?_
     · by_cases hn : n < N
-      · rw [if_pos hn]; exact integrable_dirac (by simp)
-      · rw [if_neg hn]; exact integrable_zero_measure
+      · rw [ite_eq_left hn]; exact integrable_dirac (by simp)
+      · rw [ite_eq_right hn]; exact integrable_zero_measure
     · refine summable_of_ne_finset_zero (s := Finset.range N) fun n hn => ?_
-      rw [if_neg (by simpa using hn), integral_zero_measure]
+      rw [ite_eq_right (by simpa using hn), integral_zero_measure]
   rw [integral_sum_measure hInt,
     tsum_eq_sum (s := Finset.range N) fun n hn => by
-      rw [if_neg (by simpa using hn), integral_zero_measure]]
+      rw [ite_eq_right (by simpa using hn), integral_zero_measure]]
   refine Finset.sum_congr rfl fun n hn => ?_
-  rw [if_pos (by simpa using hn), integral_dirac]
+  rw [ite_eq_left (by simpa using hn), integral_dirac]
 
 /-- The `ℝ≥0∞`-valued piece sum of a measurable function is a measurable function of the sample
 point. -/
@@ -380,7 +386,7 @@ lemma ae_finite_pieces_mem [IsProbabilityMeasure μ]
         R.indicator (fun _ : ℝ × ℝ => (1 : ℝ≥0∞)) (X k n ω)}.Finite :=
     ENNReal.finite_const_le_of_tsum_ne_top (by rw [hcount]; exact hω.ne) one_ne_zero
   refine hCfin.subset fun k hk => ?_
-  simp only [Set.mem_setOf_eq] at hk ⊢
+  simp only [Set.mem_ofPred_eq] at hk ⊢
   obtain ⟨n, hn, hmem⟩ := hk
   calc (1 : ℝ≥0∞)
       = R.indicator (fun _ : ℝ × ℝ => (1 : ℝ≥0∞)) (X k n ω) := by rw [Set.indicator_of_mem hmem]
@@ -397,7 +403,7 @@ lemma ae_finite_support_pieceSum [IsProbabilityMeasure μ]
     ∀ᵐ ω ∂μ, {k | pieceSum K X g k ω ≠ 0}.Finite := by
   filter_upwards [ae_finite_pieces_mem hd hR hRfin] with ω hω
   refine hω.subset fun k hk => ?_
-  simp only [Set.mem_setOf_eq] at hk ⊢
+  simp only [Set.mem_ofPred_eq] at hk ⊢
   have hk' : (∑ n ∈ Finset.range (K k ω), g (X k n ω)) ≠ 0 := hk
   obtain ⟨n, hn, hterm⟩ := Finset.exists_ne_zero_of_sum_ne_zero hk'
   refine ⟨n, hn, ?_⟩
@@ -603,7 +609,7 @@ private lemma toReal_smul_integral_prmPieceLaw_complex {F : Type*} [MeasurableSp
       show (∫ x in prmPiece m k, g x ∂m) = ∫ x, g x ∂(m.restrict (prmPiece m k)) from rfl,
       Measure.restrict_eq_zero.mpr h, integral_zero_measure]
   · have hpl : prmPieceLaw m k = (m (prmPiece m k))⁻¹ • m.restrict (prmPiece m k) := by
-      unfold prmPieceLaw; rw [if_neg h]
+      unfold prmPieceLaw; rw [ite_eq_right h]
     rw [hpl, integral_smul_measure, smul_smul, ENNReal.toReal_inv,
       mul_inv_cancel₀ (ENNReal.toReal_ne_zero.mpr ⟨h, measure_prmPiece_lt_top.ne⟩), one_smul]
 
@@ -1004,8 +1010,11 @@ lemma memLp_two_bandFun {A : Set ℝ} (hA : MeasurableSet A)
   have hbandmeas : MeasurableSet (Set.Ioc s t ×ˢ A) := measurableSet_Ioc.prod hA
   have hbandfin : (volume.prod ν) (Set.Ioc s t ×ˢ A) < ⊤ :=
     volume_prod_Ioc_prod_lt_top (m := ν) (s := s) (t := t) hAfin
-  refine ⟨(measurable_snd.indicator hbandmeas).aestronglyMeasurable, ?_⟩
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num),
+  have hmeas : AEStronglyMeasurable
+      ((Set.Ioc s t ×ˢ A).indicator fun p : ℝ × ℝ => p.2)
+      (volume.prod ν) := (measurable_snd.indicator hbandmeas).aestronglyMeasurable
+  change eLpNorm _ 2 (volume.prod ν) < ∞
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) hmeas,
     show ((2 : ℝ≥0∞).toReal) = (2 : ℝ) from by norm_num]
   refine ENNReal.rpow_lt_top_of_nonneg (by norm_num) ?_
   have hle : (fun p : ℝ × ℝ =>
@@ -1337,7 +1346,9 @@ private lemma norm_charFun_map_sub_le [IsProbabilityMeasure μ] {V W : Ω → �
 lemma eLpNorm_sq_bandFun {C : Set ℝ} (hC : MeasurableSet C) (s t : ℝ) :
     (eLpNorm ((Set.Ioc s t ×ˢ C).indicator fun p : ℝ × ℝ => p.2) 2 (volume.prod ν)) ^ 2
       = ENNReal.ofReal (t - s) * ∫⁻ x in C, ENNReal.ofReal (x ^ 2) ∂ν := by
-  rw [eLpNorm_two_sq, lintegral_enorm_rpow_band hC, setLIntegral_band_snd_sq hC]
+  rw [eLpNorm_two_sq _ ((measurable_snd.indicator
+    (measurableSet_Ioc.prod hC)).aestronglyMeasurable),
+    lintegral_enorm_rpow_band hC, setLIntegral_band_snd_sq hC]
 
 /-- The `L²(μ)` distance between the compensated small-jump band integral over `(s, t]` and its
 truncation to a mark set `B ⊆ (-1, 1)` of finite mass equals the `L²(volume.prod ν)` seminorm of the
@@ -1563,7 +1574,7 @@ private lemma charFun_map_smallJumpBandIntegral [IsProbabilityMeasure μ]
         = Set.Ioo (-1:ℝ) 1 ∩ {x : ℝ | |x| < ((n:ℝ) + 1)⁻¹} := by
     intro n
     ext x
-    simp only [Set.mem_sdiff, Set.mem_inter_iff, Set.mem_setOf_eq, not_and, not_le]
+    simp only [Set.mem_sdiff, Set.mem_inter_iff, Set.mem_ofPred_eq, not_and, not_le]
     exact ⟨fun ⟨hxo, h⟩ => ⟨hxo, h hxo⟩, fun ⟨hxo, h⟩ => ⟨hxo, fun _ => h⟩⟩
   -- The truncated compensated integral agrees a.e. with the compensated band sum.
   have hTrunc_ae : ∀ n : ℕ, (fun ω => (compensatedPoissonIntegral hd
@@ -1668,10 +1679,10 @@ private lemma charFun_map_smallJumpBandIntegral [IsProbabilityMeasure μ]
           rw [Real.norm_eq_abs, hω]; rfl
       _ = (eLpNorm Hn 1 μ).toReal := by
           rw [integral_norm_eq_lintegral_enorm (Lp.aestronglyMeasurable Hn),
-            ← eLpNorm_one_eq_lintegral_enorm]
+            ← eLpNorm_one_eq_lintegral_enorm (Lp.aestronglyMeasurable Hn)]
       _ ≤ (eLpNorm Hn 2 μ).toReal :=
           ENNReal.toReal_mono (Lp.eLpNorm_ne_top Hn)
-            (eLpNorm_le_eLpNorm_of_exponent_le (by norm_num) (Lp.aestronglyMeasurable Hn))
+            (eLpNorm_le_eLpNorm_of_exponent_le (by norm_num))
   -- The characteristic function of the truncated integral converges to that of the band one.
   have hint0 : Tendsto (fun n : ℕ => ∫ ω, |V ω
         - (compensatedPoissonIntegral hd

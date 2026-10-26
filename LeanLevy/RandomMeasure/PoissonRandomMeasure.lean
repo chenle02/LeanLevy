@@ -71,15 +71,15 @@ noncomputable def poissonRandomMeasure (K : ℕ → Ω → ℕ) (X : ℕ → ℕ
 
 omit [MeasurableSpace E] [MeasurableSpace Ω] [Nonempty E] in
 /-- The `ℝ≥0∞`-cast of the thinned count as a finite sum of point-membership indicators. -/
-private lemma thinnedCount_toENNReal :
+private lemma thinnedCount_toENNReal {k : ℕ} :
     (thinnedCount K X A k ω : ℝ≥0∞)
       = ∑ n ∈ Finset.range (K k ω), A.indicator (1 : E → ℝ≥0∞) (X k n ω) := by
   classical
   rw [thinnedCount, Finset.card_filter, Nat.cast_sum]
   refine Finset.sum_congr rfl fun n _ => ?_
   by_cases hx : X k n ω ∈ A
-  · rw [Set.indicator_of_mem hx, if_pos hx, Pi.one_apply, Nat.cast_one]
-  · rw [Set.indicator_of_notMem hx, if_neg hx, Nat.cast_zero]
+  · rw [Set.indicator_of_mem hx, ite_eq_left hx, Pi.one_apply, Nat.cast_one]
+  · rw [Set.indicator_of_notMem hx, ite_eq_right hx, Nat.cast_zero]
 
 omit [MeasurableSpace Ω] [Nonempty E] in
 /-- **Evaluation of the Poisson random measure.** On a measurable set `A`, the random measure counts
@@ -97,10 +97,10 @@ theorem poissonRandomMeasure_apply (hA : MeasurableSet A) :
       Pi.zero_apply]
   simp_rw [hterm]
   rw [tsum_eq_sum (s := Finset.range (K k ω)) fun n hn => by
-    rw [if_neg (by simpa [Finset.mem_range] using hn)]]
+    rw [ite_eq_right (by simpa [Finset.mem_range] using hn)]]
   rw [thinnedCount_toENNReal]
   refine Finset.sum_congr rfl fun n hn => ?_
-  rw [if_pos (by simpa [Finset.mem_range] using hn)]
+  rw [ite_eq_left (by simpa [Finset.mem_range] using hn)]
 
 omit [Nonempty E] in
 /-- The set evaluation of the Poisson random measure is a measurable function of `ω`. -/
@@ -147,7 +147,7 @@ private lemma lintegral_id_poissonMeasure (r : ℝ≥0) :
     ENNReal.ofReal_coe_nnreal]
 
 /-- The `ℝ≥0∞`-mean of the thinned count is the mass of the piece intersected with `A`. -/
-private lemma lintegral_thinnedCount [IsProbabilityMeasure μ] (hd : IsPoissonPointFamily K X m μ)
+private lemma lintegral_thinnedCount {k : ℕ} [IsProbabilityMeasure μ] (hd : IsPoissonPointFamily K X m μ)
     (hA : MeasurableSet A) :
     ∫⁻ ω, (thinnedCount K X A k ω : ℝ≥0∞) ∂μ = m (prmPiece m k ∩ A) := by
   have hTA : Measurable (thinnedCount K X A k) :=
@@ -422,9 +422,9 @@ private lemma map_toReal_poissonRandomMeasure_apply [IsProbabilityMeasure μ]
   have hN_meas : Measurable fun ω => (poissonRandomMeasure K X ω A).toReal :=
     (measurable_poissonRandomMeasure_apply hd.measurable_count hd.measurable_point hA).ennreal_toReal
   haveI : IsProbabilityMeasure (μ.map fun ω => (poissonRandomMeasure K X ω A).toReal) :=
-    Measure.isProbabilityMeasure_map hN_meas.aemeasurable
+    inferInstance
   haveI : IsProbabilityMeasure ((poissonMeasure (m A).toNNReal).map (Nat.cast : ℕ → ℝ)) :=
-    Measure.isProbabilityMeasure_map measurable_from_top.aemeasurable
+    inferInstance
   apply Measure.ext_of_charFun
   funext ξ
   rw [charFun_natCast_poissonRandomMeasure_apply hd hA hfin, charFun_poissonMeasure_eq,
@@ -794,13 +794,13 @@ private lemma indepFun_prmPartialCountVec_thinnedCountVec {ι : Type} [Fintype �
       ((Finset.range (g (Sum.inl ()))).filter fun n' => g (Sum.inr n') ∈ A i).card with hH_def
   have hG : Measurable G := by
     rw [hG_def]
-    exact measurable_pi_lambda _ fun i => Finset.measurable_sum _ fun k _ =>
+    exact Measurable.of_eval fun i => Finset.measurable_sum _ fun k _ =>
       measurable_filterCard (D := (i : Fin (n + 1) ⊕ Fin (n + 1) × ℕ) → pointFamilyIndexType E (φ i))
         (hA i) (fun g => g (Sum.inl k)) (fun n' g => g (Sum.inr (k, n')))
         (measurable_pi_apply _) fun n' => measurable_pi_apply _
   have hH : Measurable H := by
     rw [hH_def]
-    exact measurable_pi_lambda _ fun i =>
+    exact Measurable.of_eval fun i =>
       measurable_filterCard (D := (j : Unit ⊕ ℕ) → pointFamilyIndexType E (ψ j))
         (hA i) (fun g => g (Sum.inl ())) (fun n' g => g (Sum.inr n'))
         (measurable_pi_apply _) fun n' => measurable_pi_apply _
@@ -819,8 +819,8 @@ private lemma indepFun_prmPartialCountVec_thinnedCountVec {ι : Type} [Fintype �
   rw [hGeq, hHeq] at key
   have hcast := key.comp (φ := fun v (i : ι) => ((v i : ℕ) : ℝ))
     (ψ := fun v (i : ι) => ((v i : ℕ) : ℝ))
-    (measurable_pi_lambda _ fun i => measurable_from_top.comp (measurable_pi_apply i))
-    (measurable_pi_lambda _ fun i => measurable_from_top.comp (measurable_pi_apply i))
+    (Measurable.of_eval fun i => measurable_from_top.comp (measurable_pi_apply i))
+    (Measurable.of_eval fun i => measurable_from_top.comp (measurable_pi_apply i))
   simpa only [Function.comp_def] using hcast
 
 /-- **Joint characteristic function of the partial superposition-count vector.** It factorizes across
@@ -843,10 +843,10 @@ private lemma charFunDual_prmPartialCountVec {ι : Type} [Fintype ι] [Decidable
     simp only [Finset.sum_range_succ, Finset.sum_range_zero, zero_add]
   | succ n ih =>
     have mPn : Measurable fun ω (i : ι) => (prmPartialCount K X (A i) n ω : ℝ) :=
-      measurable_pi_lambda _ fun i => measurable_from_top.comp
+      Measurable.of_eval fun i => measurable_from_top.comp
         (measurable_prmPartialCount hd.measurable_count hd.measurable_point (hA i) n)
     have mQn : Measurable fun ω (i : ι) => (thinnedCount K X (A i) (n + 1) ω : ℝ) :=
-      measurable_pi_lambda _ fun i => measurable_from_top.comp
+      Measurable.of_eval fun i => measurable_from_top.comp
         (measurable_thinnedCount (hd.measurable_count _) (hd.measurable_point _) (hA i))
     have hsucc : (fun ω (i : ι) => (prmPartialCount K X (A i) (n + 1) ω : ℝ))
         = fun ω => (fun i => (prmPartialCount K X (A i) n ω : ℝ))
@@ -874,10 +874,10 @@ private lemma charFunDual_poissonRandomMeasureVec {ι : Type} [Fintype ι] [Deci
     charFunDual (μ.map fun ω (i : ι) => (poissonRandomMeasure K X ω (A i)).toReal) L
       = ∏ i, Complex.exp (↑(m (A i)).toReal * (Complex.exp (↑(L (Pi.single i 1)) * I) - 1)) := by
   have mPn : ∀ n, Measurable fun ω (i : ι) => (prmPartialCount K X (A i) n ω : ℝ) := fun n =>
-    measurable_pi_lambda _ fun i => measurable_from_top.comp
+    Measurable.of_eval fun i => measurable_from_top.comp
       (measurable_prmPartialCount hd.measurable_count hd.measurable_point (hA i) n)
   have mN : Measurable fun ω (i : ι) => (poissonRandomMeasure K X ω (A i)).toReal :=
-    measurable_pi_lambda _ fun i =>
+    Measurable.of_eval fun i =>
       (measurable_poissonRandomMeasure_apply hd.measurable_count hd.measurable_point
         (hA i)).ennreal_toReal
   have hFmeas : ∀ n, Measurable fun ω =>
@@ -974,12 +974,12 @@ theorem lintegral_poissonRandomMeasure {g : E → ℝ≥0∞} (hg : Measurable g
   have hterm : ∀ n, ∫⁻ x, g x ∂(if n < K k ω then Measure.dirac (X k n ω) else 0)
       = if n < K k ω then g (X k n ω) else 0 := fun n => by
     by_cases h : n < K k ω
-    · rw [if_pos h, if_pos h, lintegral_dirac' _ hg]
-    · rw [if_neg h, if_neg h, lintegral_zero_measure]
+    · rw [ite_eq_left h, ite_eq_left h, lintegral_dirac' _ hg]
+    · rw [ite_eq_right h, ite_eq_right h, lintegral_zero_measure]
   simp_rw [hterm]
   rw [tsum_eq_sum (s := Finset.range (K k ω))
-    fun n hn => if_neg (by simpa [Finset.mem_range] using hn)]
-  exact Finset.sum_congr rfl fun n hn => if_pos (by simpa [Finset.mem_range] using hn)
+    fun n hn => ite_eq_right (by simpa [Finset.mem_range] using hn)]
+  exact Finset.sum_congr rfl fun n hn => ite_eq_left (by simpa [Finset.mem_range] using hn)
 
 omit [SigmaFinite m] [Nonempty E] in
 /-- The integral of a simple function against the random measure is a measurable function of `ω`, as

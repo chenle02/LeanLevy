@@ -215,13 +215,13 @@ omit [Nonempty E] [SigmaFinite m] in
 /-- A finite-mass indicator is integrable against a finite-mass region. -/
 private lemma integrable_indicatorConst {D : Set E} (hD : MeasurableSet D) (hfin : m D < ⊤)
     (c : ℝ) : Integrable (D.indicator (fun _ => c)) m :=
-  memLp_one_iff_integrable.mp (memLp_indicator_const 1 hD c (Or.inr hfin.ne))
+  memLp_one_iff_integrable.mp (memLp_indicator_const 1 hD.nullMeasurableSet c (Or.inr hfin.ne))
 
 omit [Nonempty E] [SigmaFinite m] in
 /-- A finite-mass indicator lies in `L²`. -/
 private lemma memLp_two_indicatorConst {D : Set E} (hD : MeasurableSet D) (hfin : m D < ⊤)
     (c : ℝ) : MemLp (D.indicator (fun _ => c)) 2 m :=
-  memLp_indicator_const 2 hD c (Or.inr hfin.ne)
+  memLp_indicator_const 2 hD.nullMeasurableSet c (Or.inr hfin.ne)
 
 /-- **The compensated sum of a finite-mass indicator is the centered evaluation.** -/
 theorem compensatedPoissonSum_indicator_ae_eq [IsProbabilityMeasure μ]
@@ -239,8 +239,8 @@ theorem compensatedPoissonSum_indicator_ae_eq [IsProbabilityMeasure μ]
       rw [Finset.card_filter, Nat.cast_sum, Finset.mul_sum]
       refine Finset.sum_congr rfl fun n _ => ?_
       by_cases hx : X k n ω ∈ D
-      · rw [Set.indicator_of_mem hx, if_pos hx, Nat.cast_one, mul_one]
-      · rw [Set.indicator_of_notMem hx, if_neg hx, Nat.cast_zero, mul_zero]
+      · rw [Set.indicator_of_mem hx, ite_eq_left hx, Nat.cast_one, mul_one]
+      · rw [Set.indicator_of_notMem hx, ite_eq_right hx, Nat.cast_zero, mul_zero]
     have hint : ∫ x in prmPiece m k, (D.indicator fun _ => c) x ∂m
         = c * (m (prmPiece m k ∩ D)).toReal := by
       rw [setIntegral_indicator hD]
@@ -360,7 +360,7 @@ theorem aestronglyMeasurable_compensatedPoissonIntegral_prmEvalSigma [IsProbabil
   have hind_meas : ∀ n, Measurable (R.indicator (⇑(φ n))) :=
     fun n => (φ n).measurable.indicator hR
   have hind_memLp : ∀ n, MemLp (R.indicator (⇑(φ n))) 2 m :=
-    fun n => (hφ_memLp n).indicator hR
+    fun n => (hφ_memLp n).indicator hR.nullMeasurableSet
   have hind_int : ∀ n, Integrable (R.indicator (⇑(φ n))) m :=
     fun n => ((SimpleFunc.memLp_iff_integrable two_ne_zero (by norm_num)).mp
       (hφ_memLp n)).indicator hR
@@ -450,7 +450,7 @@ theorem aestronglyMeasurable_compensatedPoissonIntegral_prmEvalSigma [IsProbabil
     have hle : eLpNorm (⇑f - R.indicator (⇑(φ n))) 2 m ≤ ENNReal.ofReal (1 / (n + 1)) :=
       calc eLpNorm (⇑f - R.indicator (⇑(φ n))) 2 m
           = eLpNorm (R.indicator (⇑f - ⇑(φ n))) 2 m := eLpNorm_congr_ae hRindic
-        _ ≤ eLpNorm (⇑f - ⇑(φ n)) 2 m := eLpNorm_indicator_le _
+        _ ≤ eLpNorm (⇑f - ⇑(φ n)) 2 m := eLpNorm_indicator_le _ hR.nullMeasurableSet
         _ ≤ ENNReal.ofReal (1 / (n + 1)) := (hφ_lt n).le
     calc (eLpNorm (⇑f - R.indicator (⇑(φ n))) 2 m).toReal
         ≤ (ENNReal.ofReal (1 / (n + 1))).toReal := ENNReal.toReal_mono ENNReal.ofReal_ne_top hle
@@ -648,7 +648,7 @@ private lemma ae_finite_band_pieces [IsProbabilityMeasure μ]
         (Set.Ioc s t ×ˢ {x : ℝ | 1 ≤ |x|}).indicator (fun _ : ℝ × ℝ => (1 : ℝ≥0∞)) (X k n ω)}.Finite :=
     ENNReal.finite_const_le_of_tsum_ne_top (by rw [hcount]; exact hω.ne) one_ne_zero
   refine hCfin.subset fun k hk => ?_
-  simp only [Set.mem_setOf_eq] at hk ⊢
+  simp only [Set.mem_ofPred_eq] at hk ⊢
   obtain ⟨n, hn, hmem⟩ := hk
   calc (1 : ℝ≥0∞)
       = (Set.Ioc s t ×ˢ {x : ℝ | 1 ≤ |x|}).indicator (fun _ : ℝ × ℝ => (1 : ℝ≥0∞)) (X k n ω) := by

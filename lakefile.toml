@@ -1,19 +1,30 @@
 name = "leanlevy"
 version = "0.1.0"
-defaultTargets = ["leanlevy"]
+defaultTargets = ["LeanLevy"]
 
+# Branch lean-4.35-poisson-subset: only the 12 modules below are ported to
+# Lean 4.35 / Mathlib 56a0058 and built; see PORT-LEAN-4.35.md. The other
+# upstream modules are kept unchanged in the tree but are not built here.
 [[lean_lib]]
 name = "LeanLevy"
-
-[[lean_exe]]
-name = "leanlevy"
-root = "Main"
+roots = [
+  "LeanLevy.Fourier.MeasureFourier",
+  "LeanLevy.Probability.Characteristic",
+  "LeanLevy.Levy.LevyMeasure",
+  "LeanLevy.Levy.CompensatedIntegral",
+  "LeanLevy.Probability.IndependenceGrouping",
+  "LeanLevy.Probability.Poisson",
+  "LeanLevy.RandomMeasure.PoissonPointFamily",
+  "LeanLevy.RandomMeasure.PoissonCompensated",
+  "LeanLevy.RandomMeasure.PoissonRandomMeasure",
+  "LeanLevy.RandomMeasure.PoissonFiltration",
+  "LeanLevy.RandomMeasure.TimeSpacePoisson",
+  "LeanLevy.RandomMeasure.PoissonMartingale",
+]
+leanOptions = { autoImplicit = false }
 
 [[require]]
-name = "mathlib4"
-git = "https://github.com/leanprover-community/mathlib4"
-rev = "1f165a51dee3b8cf9dbd45716c0b7fe05fa6bf00"
-
-[[require]]
-name = "repl"
-git = "https://github.com/leanprover-community/repl"
+name = "mathlib"
+scope = "leanprover-community"
+git = "https://github.com/leanprover-community/mathlib4.git"
+rev = "56a005855ea17e0b0958f73ec801ae140b0a1679"

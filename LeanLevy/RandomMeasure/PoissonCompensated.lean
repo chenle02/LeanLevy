@@ -10,7 +10,7 @@ import Mathlib.MeasureTheory.Function.LpSpace.Complete
 import Mathlib.MeasureTheory.Integral.DominatedConvergence
 import Mathlib.MeasureTheory.Integral.Lebesgue.Markov
 import Mathlib.Analysis.SpecificLimits.Basic
-import Mathlib.Data.Real.ConjExponents
+import Mathlib.Basic.Real.ConjExponents
 import LeanLevy.RandomMeasure.PoissonPointFamily
 
 /-!
@@ -436,7 +436,7 @@ theorem integral_sq_compensatedPoissonSum [IsProbabilityMeasure μ]
     have hgtend : ∀ᵐ ω ∂μ, Tendsto (fun N => gseq N ω) atTop (𝓝 (T ω - Tn n ω)) := by
       filter_upwards [htend] with ω hω
       exact (hω.comp (tendsto_add_atTop_nat n)).sub_const _
-    exact (fatou_sq_bound (hr_nonneg n) hgmeas (hTmemlp.1.sub (hTnmemlp n).1) hgint hgtend hgle).2
+    exact (fatou_sq_bound (hr_nonneg n) hgmeas (hTmemlp.aestronglyMeasurable.sub (hTnmemlp n).aestronglyMeasurable) hgint hgtend hgle).2
   -- closing: ∫ Tn² converges to both ∫ T² and ∫ f²
   have hclose : Tendsto (fun n => ∫ ω, (Tn n ω) ^ 2 ∂μ) atTop (𝓝 (∫ ω, (T ω) ^ 2 ∂μ)) := by
     have hbound : ∀ n, |(∫ ω, (T ω) ^ 2 ∂μ) - ∫ ω, (Tn n ω) ^ 2 ∂μ|
@@ -732,17 +732,17 @@ private theorem tendsto_compensatedPoissonToLp_of_eLpNorm_sub_tendsto [IsProbabi
         (approxSimple_memLp f n))) atTop (𝓝 0) := by
     refine squeeze_zero (fun n => dist_nonneg) (fun n => ?_) (by simpa using t1.add t2)
     rw [dist_compensatedPoissonToLp]
-    have hfin1 : eLpNorm (⇑f - gm n) 2 m ≠ ⊤ := ((Lp.memLp f).sub (hg2 n)).2.ne
+    have hfin1 : eLpNorm (⇑f - gm n) 2 m ≠ ⊤ := ((Lp.memLp f).sub (hg2 n)).ne
     have hfin2 : eLpNorm (⇑f - ⇑(approxSimple f n)) 2 m ≠ ⊤ :=
-      ((Lp.memLp f).sub (approxSimple_memLp f n)).2.ne
+      ((Lp.memLp f).sub (approxSimple_memLp f n)).ne
     have htri : eLpNorm (fun x => gm n x - (approxSimple f n) x) 2 m
         ≤ eLpNorm (⇑f - gm n) 2 m + eLpNorm (⇑f - ⇑(approxSimple f n)) 2 m := by
       have hrw : (fun x => gm n x - (approxSimple f n) x)
           = (fun x => gm n x - ⇑f x) + (fun x => ⇑f x - (approxSimple f n) x) := by
         funext x; simp only [Pi.add_apply]; ring
       rw [hrw]
-      refine (eLpNorm_add_le ((hg2 n).sub (Lp.memLp f)).aestronglyMeasurable
-        ((Lp.memLp f).sub (approxSimple_memLp f n)).aestronglyMeasurable one_le_two).trans_eq ?_
+      refine (eLpNorm_add_le one_le_two).trans_eq ?_
+      change eLpNorm (gm n - ⇑f) 2 m + eLpNorm (⇑f - ⇑(approxSimple f n)) 2 m = _
       rw [eLpNorm_sub_comm (gm n) (⇑f)]
     calc (eLpNorm (fun x => gm n x - (approxSimple f n) x) 2 m).toReal
         ≤ (eLpNorm (⇑f - gm n) 2 m + eLpNorm (⇑f - ⇑(approxSimple f n)) 2 m).toReal :=
@@ -804,10 +804,10 @@ private theorem tendsto_integral_of_tendsto_Lp2 [IsProbabilityMeasure μ]
       _ ≤ ∫ ω, ‖H ω‖ ∂μ := norm_integral_le_integral_norm _
       _ = (eLpNorm H 1 μ).toReal := by
             rw [integral_norm_eq_lintegral_enorm (Lp.aestronglyMeasurable H),
-              ← eLpNorm_one_eq_lintegral_enorm]
+              ← eLpNorm_one_eq_lintegral_enorm (Lp.aestronglyMeasurable H)]
       _ ≤ (eLpNorm H 2 μ).toReal :=
             ENNReal.toReal_mono (Lp.eLpNorm_ne_top H)
-              (eLpNorm_le_eLpNorm_of_exponent_le (by norm_num) (Lp.aestronglyMeasurable H))
+              (eLpNorm_le_eLpNorm_of_exponent_le (by norm_num))
       _ = ‖H‖ := (Lp.norm_def H).symm
       _ = dist (gn n) g := by rw [hH, ← dist_eq_norm]
   · have hdist := h.dist (tendsto_const_nhds (x := g))
@@ -902,8 +902,7 @@ theorem compensatedPoissonIntegral_add [IsProbabilityMeasure μ]
       simp only [Pi.sub_apply, Pi.add_apply]
       rw [hx]; ring
     rw [eLpNorm_congr_ae hae]
-    exact eLpNorm_add_le (((Lp.memLp f).sub (approxSimple_memLp f n)).aestronglyMeasurable)
-      (((Lp.memLp g).sub (approxSimple_memLp g n)).aestronglyMeasurable) one_le_two
+    exact eLpNorm_add_le one_le_two
   have key := tendsto_compensatedPoissonToLp_of_eLpNorm_sub_tendsto hd (f + g)
     (gm := fun n => ⇑(approxSimple f n) + ⇑(approxSimple g n))
     (fun n => (approxSimple_measurable f n).add (approxSimple_measurable g n))

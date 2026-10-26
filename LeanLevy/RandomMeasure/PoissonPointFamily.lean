@@ -136,7 +136,7 @@ theorem measure_prmPiece_lt_top : m (prmPiece m k) < ⊤ :=
 private theorem prmPieceLaw_of_ne_zero [Nonempty E] (hk : m (prmPiece m k) ≠ 0) :
     prmPieceLaw m k = (m (prmPiece m k))⁻¹ • m.restrict (prmPiece m k) := by
   unfold prmPieceLaw
-  rw [if_neg hk]
+  rw [ite_eq_right hk]
 
 /-- Each normalized piece law is a probability measure: on a zero-mass piece it is a Dirac mass, and
 on a positive-mass piece the rescaling factor `(m (prmPiece m k))⁻¹` cancels the finite total mass. -/
@@ -340,11 +340,11 @@ theorem IsPoissonPointFamily.indepFun_pointFamily_split [IsProbabilityMeasure μ
   have hLmeas : Measurable
       (fun (g : (i : ↑(I.map eφ)) → pointFamilyIndexType E i.1) (i : I) =>
         g ⟨φ i, Finset.mem_map_of_mem eφ i.2⟩) :=
-    measurable_pi_lambda _ fun i => measurable_pi_apply _
+    Measurable.of_eval fun i => measurable_pi_apply _
   have hRmeas : Measurable
       (fun (g : (j : ↑(J.map eψ)) → pointFamilyIndexType E j.1) (j : J) =>
         g ⟨ψ j, Finset.mem_map_of_mem eψ j.2⟩) :=
-    measurable_pi_lambda _ fun j => measurable_pi_apply _
+    Measurable.of_eval fun j => measurable_pi_apply _
   exact key.comp hLmeas hRmeas
 
 /-- **Count-versus-marks independence within a piece.** For a fixed piece `k`, the count `K k` is
@@ -382,13 +382,13 @@ theorem IsPoissonPointFamily.indepFun_piece_piece [IsProbabilityMeasure μ]
           (Sum.elim (fun _ => Sum.inl j) (fun n => Sum.inr (j, n)) i) =>
         (g (Sum.inl ()), fun n => g (Sum.inr n))) :=
     (measurable_pi_apply (Sum.inl ())).prodMk
-      (measurable_pi_lambda _ fun n => measurable_pi_apply (Sum.inr n))
+      (Measurable.of_eval fun n => measurable_pi_apply (Sum.inr n))
   have hextrR : Measurable
       (fun g : (i : Unit ⊕ ℕ) → pointFamilyIndexType E
           (Sum.elim (fun _ => Sum.inl k) (fun n => Sum.inr (k, n)) i) =>
         (g (Sum.inl ()), fun n => g (Sum.inr n))) :=
     (measurable_pi_apply (Sum.inl ())).prodMk
-      (measurable_pi_lambda _ fun n => measurable_pi_apply (Sum.inr n))
+      (Measurable.of_eval fun n => measurable_pi_apply (Sum.inr n))
   exact h.comp hextrL hextrR
 
 /-- The block index of a combined-index position: the piece it belongs to. -/
@@ -493,14 +493,14 @@ private theorem setIntegral_count_rangeSum [IsProbabilityMeasure μ]
   have hmeas : MeasurableSet {ω | K k ω = j} :=
     hd.measurable_count k (measurableSet_singleton j)
   set Xk : Ω → (ℕ → E) := fun ω n => X k n ω with hXk
-  have hXk_meas : Measurable Xk := measurable_pi_lambda _ fun n => hd.measurable_point k n
+  have hXk_meas : Measurable Xk := Measurable.of_eval fun n => hd.measurable_point k n
   set ψ : (ℕ → E) → ℝ := fun y => ∑ n ∈ Finset.range j, g (y n) with hψ
   have hψ_meas : Measurable ψ :=
     Finset.measurable_sum _ fun n _ => hg.comp (measurable_pi_apply n)
   have hcongr : ({ω | K k ω = j}).indicator (fun ω => ψ (Xk ω))
       = fun ω => (if K k ω = j then (1 : ℝ) else 0) * ψ (Xk ω) := by
     funext ω
-    simp only [Set.indicator_apply, Set.mem_setOf_eq]
+    simp only [Set.indicator_apply, Set.mem_ofPred_eq]
     by_cases h : K k ω = j <;> simp [h]
   rw [← integral_indicator hmeas, hcongr,
     (hd.indepFun_count_marks k).integral_fun_comp_mul_comp
@@ -510,7 +510,7 @@ private theorem setIntegral_count_rangeSum [IsProbabilityMeasure μ]
   have hfirst : ∫ ω, (if K k ω = j then (1 : ℝ) else 0) ∂μ = μ.real {ω | K k ω = j} := by
     have hrw : (fun ω => if K k ω = j then (1 : ℝ) else 0)
         = ({ω | K k ω = j}).indicator (fun _ => 1) := by
-      funext ω; by_cases h : K k ω = j <;> simp [Set.mem_setOf_eq, h]
+      funext ω; by_cases h : K k ω = j <;> simp [Set.mem_ofPred_eq, h]
     rw [hrw, integral_indicator_const (1 : ℝ) hmeas, smul_eq_mul, mul_one]
   rw [hfirst]
   congr 1
@@ -539,7 +539,7 @@ theorem integral_pieceSum [IsProbabilityMeasure μ] (hd : IsPoissonPointFamily K
     hd.measurable_count k (measurableSet_singleton j)
   have hs_disj : Pairwise fun i j => Disjoint (s i) (s j) := by
     intro a b hab
-    simp only [Set.disjoint_left, hs, Set.mem_setOf_eq]
+    simp only [Set.disjoint_left, hs, Set.mem_ofPred_eq]
     intro ω h1 h2; exact hab (h1 ▸ h2)
   have hunion : (⋃ j, s j) = Set.univ :=
     Set.eq_univ_of_forall fun ω => Set.mem_iUnion.2 ⟨K k ω, rfl⟩
@@ -610,11 +610,11 @@ private theorem setIntegral_count_marksFun [IsProbabilityMeasure μ]
   have hmeas : MeasurableSet {ω | K k ω = j} :=
     hd.measurable_count k (measurableSet_singleton j)
   set Xk : Ω → (ℕ → E) := fun ω n => X k n ω with hXk
-  have hXk_meas : Measurable Xk := measurable_pi_lambda _ fun n => hd.measurable_point k n
+  have hXk_meas : Measurable Xk := Measurable.of_eval fun n => hd.measurable_point k n
   have hcongr : ({ω | K k ω = j}).indicator (fun ω => ψ (Xk ω))
       = fun ω => (if K k ω = j then (1 : ℝ) else 0) * ψ (Xk ω) := by
     funext ω
-    simp only [Set.indicator_apply, Set.mem_setOf_eq]
+    simp only [Set.indicator_apply, Set.mem_ofPred_eq]
     by_cases h : K k ω = j <;> simp [h]
   rw [← integral_indicator hmeas, hcongr,
     (hd.indepFun_count_marks k).integral_fun_comp_mul_comp
@@ -624,7 +624,7 @@ private theorem setIntegral_count_marksFun [IsProbabilityMeasure μ]
   have hfirst : ∫ ω, (if K k ω = j then (1 : ℝ) else 0) ∂μ = μ.real {ω | K k ω = j} := by
     have hrw : (fun ω => if K k ω = j then (1 : ℝ) else 0)
         = ({ω | K k ω = j}).indicator (fun _ => 1) := by
-      funext ω; by_cases h : K k ω = j <;> simp [Set.mem_setOf_eq, h]
+      funext ω; by_cases h : K k ω = j <;> simp [Set.mem_ofPred_eq, h]
     rw [hrw, integral_indicator_const (1 : ℝ) hmeas, smul_eq_mul, mul_one]
   rw [hfirst]
 
@@ -702,8 +702,8 @@ private theorem integral_marksSum_sq_eq [IsProbabilityMeasure μ]
       = if n = n' then A else B ^ 2 := by
     intro n n'
     by_cases h : n = n'
-    · subst h; rw [if_pos rfl]; simp_rw [← pow_two]; exact heach_f2 n
-    · rw [if_neg h, (hindep n n' h).integral_fun_mul_eq_mul_integral
+    · subst h; rw [ite_eq_left rfl]; simp_rw [← pow_two]; exact heach_f2 n
+    · rw [ite_eq_right h, (hindep n n' h).integral_fun_mul_eq_mul_integral
         (hInt_f n).aestronglyMeasurable (hInt_f n').aestronglyMeasurable, heach_f n, heach_f n',
         ← pow_two]
   have hexp : (fun ω => (∑ n ∈ Finset.range j, f (X k n ω)) ^ 2)
@@ -725,7 +725,7 @@ private theorem integral_marksSum_sq_eq [IsProbabilityMeasure μ]
       intro n'; split_ifs <;> ring
     simp_rw [hrw]
     rw [Finset.sum_add_distrib, Finset.sum_const, Finset.card_range, nsmul_eq_mul,
-      Finset.sum_ite_eq (Finset.range j) n (fun _ => A - B ^ 2), if_pos hn]
+      Finset.sum_ite_eq (Finset.range j) n (fun _ => A - B ^ 2), ite_eq_left hn]
     ring
   rw [Finset.sum_congr rfl hin, Finset.sum_const, Finset.card_range, nsmul_eq_mul]
   ring
@@ -810,7 +810,7 @@ theorem integral_sq_pieceSum [IsProbabilityMeasure μ] (hd : IsPoissonPointFamil
     hd.measurable_count k (measurableSet_singleton j)
   have hs_disj : Pairwise fun i j => Disjoint (s i) (s j) := by
     intro a b hab
-    simp only [Set.disjoint_left, hs, Set.mem_setOf_eq]
+    simp only [Set.disjoint_left, hs, Set.mem_ofPred_eq]
     intro ω h1 h2; exact hab (h1 ▸ h2)
   have hunion : (⋃ j, s j) = Set.univ :=
     Set.eq_univ_of_forall fun ω => Set.mem_iUnion.2 ⟨K k ω, rfl⟩
@@ -982,10 +982,10 @@ private theorem setIntegral_count_marksFun_complex [IsProbabilityMeasure μ]
   have hmeas : MeasurableSet {ω | K k ω = j} :=
     hd.measurable_count k (measurableSet_singleton j)
   have hXk_meas : Measurable (fun ω (n : ℕ) => X k n ω) :=
-    measurable_pi_lambda _ fun n => hd.measurable_point k n
+    Measurable.of_eval fun n => hd.measurable_point k n
   have hcongr : ({ω | K k ω = j}).indicator (fun ω => ψ (fun n => X k n ω))
       = fun ω => (if K k ω = j then (1 : ℂ) else 0) * ψ (fun n => X k n ω) := by
-    funext ω; simp only [Set.indicator_apply, Set.mem_setOf_eq]
+    funext ω; simp only [Set.indicator_apply, Set.mem_ofPred_eq]
     by_cases h : K k ω = j <;> simp [h]
   rw [← integral_indicator hmeas, hcongr]
   simp only []
@@ -998,7 +998,7 @@ private theorem setIntegral_count_marksFun_complex [IsProbabilityMeasure μ]
   have hfirst : ∫ ω, (if K k ω = j then (1 : ℂ) else 0) ∂μ = (μ.real {ω | K k ω = j} : ℂ) := by
     have hrw : (fun ω => if K k ω = j then (1 : ℂ) else 0)
         = ({ω | K k ω = j}).indicator (fun _ => 1) := by
-      funext ω; by_cases h : K k ω = j <;> simp [Set.mem_setOf_eq, h]
+      funext ω; by_cases h : K k ω = j <;> simp [Set.mem_ofPred_eq, h]
     rw [hrw, integral_indicator_const_complex (1 : ℂ) hmeas, mul_one]
   rw [hfirst]
 
@@ -1017,7 +1017,7 @@ theorem integral_pieceProd_eq_exp [IsProbabilityMeasure μ] (hd : IsPoissonPoint
     hd.measurable_count k (measurableSet_singleton j)
   have hs_disj : Pairwise fun i j => Disjoint (s i) (s j) := by
     intro a b hab
-    simp only [Set.disjoint_left, hs, Set.mem_setOf_eq]
+    simp only [Set.disjoint_left, hs, Set.mem_ofPred_eq]
     intro ω h1 h2; exact hab (h1 ▸ h2)
   have hunion : (⋃ j, s j) = Set.univ :=
     Set.eq_univ_of_forall fun ω => Set.mem_iUnion.2 ⟨K k ω, rfl⟩
@@ -1030,7 +1030,7 @@ theorem integral_pieceProd_eq_exp [IsProbabilityMeasure μ] (hd : IsPoissonPoint
     intro ω
     calc ‖∏ n ∈ Finset.range (K k ω), w (X k n ω)‖
         = ∏ n ∈ Finset.range (K k ω), ‖w (X k n ω)‖ := norm_prod _ _
-      _ ≤ 1 := Finset.prod_le_one (fun _ _ => norm_nonneg _) (fun _ _ => hbdd _)
+      _ ≤ 1 := Finset.prod_le_one₀ (fun _ _ => norm_nonneg _) (fun _ _ => hbdd _)
   have hInt : Integrable (fun ω => ∏ n ∈ Finset.range (K k ω), w (X k n ω)) μ :=
     (integrable_const (1 : ℝ)).mono' hPmeas.aestronglyMeasurable
       (Filter.Eventually.of_forall hbound)
@@ -1089,8 +1089,8 @@ private lemma integral_pow_thinnedCount [IsProbabilityMeasure μ] (hd : IsPoisso
     have hwrw : w = fun x => (1 : ℂ) + A.indicator (fun _ => z - 1) x := by
       funext x
       by_cases hx : x ∈ A
-      · simp only [hw_def, Set.indicator_of_mem hx, if_pos hx]; ring
-      · simp only [hw_def, Set.indicator_of_notMem hx, if_neg hx]; ring
+      · simp only [hw_def, Set.indicator_of_mem hx, ite_eq_left hx]; ring
+      · simp only [hw_def, Set.indicator_of_notMem hx, ite_eq_right hx]; ring
     have hone : ∫ _ : E, (1 : ℂ) ∂(prmPieceLaw m k) = 1 := by simp
     rw [hwrw, integral_add (integrable_const 1) ((integrable_const (z - 1)).indicator hA),
       hone, integral_indicator_const_complex (z - 1) hA]
@@ -1118,7 +1118,7 @@ private lemma integral_pow_thinnedCount_mul [IsProbabilityMeasure μ]
   have hwbdd : ∀ x, ‖w x‖ ≤ 1 := by
     intro x
     rw [hw_def, norm_mul]
-    refine mul_le_one₀ ?_ (norm_nonneg _) ?_
+    refine (mul_le_of_le_one_left (norm_nonneg _) ?_).trans ?_
     · split_ifs with hx
       · exact hz₁
       · simp
@@ -1142,12 +1142,12 @@ private lemma integral_pow_thinnedCount_mul [IsProbabilityMeasure μ]
       by_cases hxA : x ∈ A
       · have hxB : x ∉ B := Set.disjoint_left.mp hAB hxA
         simp only [hw_def, Set.indicator_of_mem hxA, Set.indicator_of_notMem hxB,
-          if_pos hxA, if_neg hxB]; ring
+          ite_eq_left hxA, ite_eq_right hxB]; ring
       · by_cases hxB : x ∈ B
         · simp only [hw_def, Set.indicator_of_notMem hxA, Set.indicator_of_mem hxB,
-            if_neg hxA, if_pos hxB]; ring
+            ite_eq_right hxA, ite_eq_left hxB]; ring
         · simp only [hw_def, Set.indicator_of_notMem hxA, Set.indicator_of_notMem hxB,
-            if_neg hxA, if_neg hxB]; ring
+            ite_eq_right hxA, ite_eq_right hxB]; ring
     have hone : ∫ _ : E, (1 : ℂ) ∂(prmPieceLaw m k) = 1 := by simp
     have hfA : Integrable (fun x => (1 : ℂ) + A.indicator (fun _ => z₁ - 1) x) (prmPieceLaw m k) :=
       (integrable_const 1).add ((integrable_const (z₁ - 1)).indicator hA)
@@ -1198,13 +1198,13 @@ theorem map_thinnedCount [IsProbabilityMeasure μ] (hd : IsPoissonPointFamily K 
   have hTA : Measurable (thinnedCount K X A k) :=
     measurable_thinnedCount (hd.measurable_count k) (hd.measurable_point k) hA
   haveI : IsProbabilityMeasure (μ.map (thinnedCount K X A k)) :=
-    Measure.isProbabilityMeasure_map hTA.aemeasurable
+    inferInstance
   have hcast : (μ.map (thinnedCount K X A k)).map (Nat.cast : ℕ → ℝ)
       = (poissonMeasure (m (prmPiece m k ∩ A)).toNNReal).map (Nat.cast : ℕ → ℝ) := by
     haveI : IsProbabilityMeasure ((μ.map (thinnedCount K X A k)).map (Nat.cast : ℕ → ℝ)) :=
-      Measure.isProbabilityMeasure_map measurable_from_top.aemeasurable
+      inferInstance
     haveI : IsProbabilityMeasure ((poissonMeasure (m (prmPiece m k ∩ A)).toNNReal).map
-        (Nat.cast : ℕ → ℝ)) := Measure.isProbabilityMeasure_map measurable_from_top.aemeasurable
+        (Nat.cast : ℕ → ℝ)) := inferInstance
     apply Measure.ext_of_charFun
     funext ξ
     rw [charFun_natCast_thinnedCount hd hA ξ, charFun_poissonMeasure_eq,
@@ -1279,17 +1279,16 @@ theorem indepFun_thinnedCount_thinnedCount [IsProbabilityMeasure μ]
   have hTB : Measurable (thinnedCount K X B k) :=
     measurable_thinnedCount (hd.measurable_count k) (hd.measurable_point k) hB
   haveI : IsProbabilityMeasure (μ.map (thinnedCount K X A k)) :=
-    Measure.isProbabilityMeasure_map hTA.aemeasurable
+    inferInstance
   haveI : IsProbabilityMeasure (μ.map (thinnedCount K X B k)) :=
-    Measure.isProbabilityMeasure_map hTB.aemeasurable
+    inferInstance
   haveI : IsProbabilityMeasure ((μ.map (thinnedCount K X A k)).map (Nat.cast : ℕ → ℝ)) :=
-    Measure.isProbabilityMeasure_map measurable_from_top.aemeasurable
+    inferInstance
   haveI : IsProbabilityMeasure ((μ.map (thinnedCount K X B k)).map (Nat.cast : ℕ → ℝ)) :=
-    Measure.isProbabilityMeasure_map measurable_from_top.aemeasurable
+    inferInstance
   haveI : IsProbabilityMeasure
       (μ.map fun ω => ((thinnedCount K X A k ω : ℝ), (thinnedCount K X B k ω : ℝ))) :=
-    Measure.isProbabilityMeasure_map
-      ((measurable_from_top.comp hTA).prodMk (measurable_from_top.comp hTB)).aemeasurable
+    inferInstance
   rw [indepFun_iff_map_prod_eq_prod_map_map hTA.aemeasurable hTB.aemeasurable]
   refine (measurableEmbedding_natCast.prodMap measurableEmbedding_natCast).map_injective ?_
   rw [Measure.map_map (measurableEmbedding_natCast.measurable.prodMap
@@ -1326,12 +1325,12 @@ private lemma prod_ite_eq_one_add_sum_indicator {ι : Type} [Fintype ι] {A : ι
   · obtain ⟨i₀, hi₀⟩ := hx
     have huniq : ∀ i, i ≠ i₀ → x ∉ A i := fun i hi hmem =>
       Set.disjoint_left.mp (hdisj hi) hmem hi₀
-    rw [Finset.prod_eq_single i₀ (fun i _ hi => if_neg (huniq i hi)) (by simp), if_pos hi₀,
+    rw [Finset.prod_eq_single i₀ (fun i _ hi => ite_eq_right (huniq i hi)) (by simp), ite_eq_left hi₀,
       Finset.sum_eq_single i₀ (fun i _ hi => Set.indicator_of_notMem (huniq i hi) _) (by simp),
       Set.indicator_of_mem hi₀]
     ring
   · push Not at hx
-    rw [Finset.prod_eq_one (fun i _ => if_neg (hx i)),
+    rw [Finset.prod_eq_one (fun i _ => ite_eq_right (hx i)),
       Finset.sum_eq_zero (fun i _ => Set.indicator_of_notMem (hx i) _)]
     ring
 
@@ -1350,7 +1349,7 @@ lemma integral_prod_pow_thinnedCount {ι : Type} [Fintype ι] [IsProbabilityMeas
   have hwbdd : ∀ x, ‖w x‖ ≤ 1 := by
     intro x
     rw [hw_def, norm_prod]
-    refine Finset.prod_le_one (fun _ _ => norm_nonneg _) fun i _ => ?_
+    refine Finset.prod_le_one₀ (fun _ _ => norm_nonneg _) fun i _ => ?_
     split_ifs with hx
     · exact hz i
     · simp
@@ -1401,7 +1400,7 @@ lemma charFunDual_pi_thinnedCount {ι : Type} [Fintype ι] [DecidableEq ι] [IsP
     measurable_thinnedCount (hd.measurable_count k) (hd.measurable_point k) (hA i)
   rw [charFunDual_apply, integral_map
       (φ := fun ω (i : ι) => (thinnedCount K X (A i) k ω : ℝ))
-      (measurable_pi_lambda _ fun i => (measurable_from_top.comp (hT i))).aemeasurable (by fun_prop)]
+      (Measurable.of_eval fun i => (measurable_from_top.comp (hT i))).aemeasurable (by fun_prop)]
   have hpow : ∀ ω, Complex.exp (↑(L fun i => (thinnedCount K X (A i) k ω : ℝ)) * I)
       = ∏ i, (Complex.exp (↑(L (Pi.single i 1)) * I)) ^ (thinnedCount K X (A i) k ω) := by
     intro ω

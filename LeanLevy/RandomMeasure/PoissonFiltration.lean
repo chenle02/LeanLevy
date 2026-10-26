@@ -178,11 +178,11 @@ private def evalAtom (B : ι → Set E) (J : Finset ι) : Set E :=
 omit [MeasurableSpace E] in
 private lemma evalAtom_of_nonempty {J : Finset ι} (hJ : J.Nonempty) :
     evalAtom B J = (⋂ i ∈ J, B i) ∩ ⋂ i ∉ J, (B i)ᶜ :=
-  if_pos hJ
+  ite_eq_left hJ
 
 omit [MeasurableSpace E] in
 private lemma evalAtom_empty : evalAtom B ∅ = ∅ :=
-  if_neg (by simp)
+  ite_eq_right (by simp)
 
 omit [MeasurableSpace E] in
 private lemma evalAtom_subset {J : Finset ι} {i : ι} (hiJ : i ∈ J) :
@@ -315,7 +315,7 @@ theorem iIndepFun_poissonRandomMeasure_families [IsProbabilityMeasure μ]
     show Disjoint {σ : Σ i, Finset (ιB i) | σ.1 = i} {σ | σ.1 = i'}
     rw [Set.disjoint_left]
     rintro σ hσ hσ'
-    simp only [Set.mem_setOf_eq] at hσ hσ'
+    simp only [Set.mem_ofPred_eq] at hσ hσ'
     exact hii (hσ.symm.trans hσ')
   have hblocks := hiIndep.setRestrict_of_pairwiseDisjoint hmeas hSdisj
   -- Reassemble each family from its atoms: `N ω (B i b) = ∑_{J ∋ b} N ω (evalAtom (B i) J)`.
@@ -323,15 +323,15 @@ theorem iIndepFun_poissonRandomMeasure_families [IsProbabilityMeasure μ]
     fun i g b => ∑ J ∈ Finset.univ.filter (fun J => b ∈ J), g ⟨⟨i, J⟩, rfl⟩ with hG
   have hGmeas : ∀ i, Measurable (G i) := fun i => by
     rw [hG]
-    exact measurable_pi_lambda _ fun b =>
+    exact Measurable.of_eval fun b =>
       Finset.measurable_sum _ fun J _ => measurable_pi_apply _
   have hcomp := hblocks.comp G hGmeas
   have heq : (fun i ω (b : ιB i) => poissonRandomMeasure K X ω (B i b))
-      = fun i => G i ∘ (fun ω => ({σ : Σ i, Finset (ιB i) | σ.1 = i}).restrict
+      = fun i => G i ∘ (fun ω => ({σ : Σ i, Finset (ιB i) | σ.1 = i}).domRestrict
           fun σ => poissonRandomMeasure K X ω (A σ)) := by
     funext i ω b
     rw [poissonRandomMeasure_apply_biUnion_evalAtom (hBm i) ω b]
-    simp only [Function.comp_apply, hG, Set.restrict_apply, hA]
+    simp only [Function.comp_apply, hG, Set.domRestrict_apply, hA] <;> rfl
   rw [heq]
   exact hcomp
 
